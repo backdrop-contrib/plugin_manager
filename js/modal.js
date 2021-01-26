@@ -291,8 +291,14 @@
    * AJAX responder command to place HTML within the modal.
    */
   Drupal.CTools.Modal.modal_display = function(ajax, response, status) {
+    var settings = response.settings || ajax.settings || Drupal.settings;
+    // If the modal does not exist yet, create it.
     if ($('#modalContent').length == 0) {
       Drupal.CTools.Modal.show(Drupal.CTools.Modal.getSettings(ajax.element));
+    }
+    // If the modal exists run detachBehaviors before removing existing content.
+    else {
+      Drupal.detachBehaviors($('#modalContent'), settings, 'unload');
     }
     $('#modal-title').html(response.title);
     // Simulate an actual page load by scrolling to the top after adding the
@@ -302,7 +308,6 @@
     $(document).trigger('CToolsAttachBehaviors', $('#modalContent'));
 
     // Attach behaviors within a modal dialog.
-    var settings = response.settings || ajax.settings || Drupal.settings;
     Drupal.attachBehaviors($('#modalContent'), settings);
 
     if ($('#modal-content').hasClass('ctools-modal-loading')) {
