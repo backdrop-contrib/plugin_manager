@@ -595,6 +595,7 @@
       $('body').unbind( 'keydown', modalTabTrapHandler );
       $('.close', $modalHeader).unbind('click', modalContentClose);
       $(document).unbind('keydown', modalEventEscapeCloseHandler);
+      $(document).trigger('CToolsCloseModalBehaviors', $('#modalContent'));
       $(document).trigger('CToolsDetachBehaviors', $('#modalContent'));
 
       // Closing animation.
