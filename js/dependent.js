@@ -14,7 +14,7 @@
  * - Checkboxes don't have their own id, so you need to add one in a div
  *   around the checkboxes via #prefix and #suffix. You actually need to add TWO
  *   divs because it's the parent that gets hidden. Also be sure to retain the
- *   'expand_checkboxes' in the #process array, because the CTools process will
+ *   'form_process_checkboxes' in the #process array, because the CTools process will
  *   override it.
  */
 
