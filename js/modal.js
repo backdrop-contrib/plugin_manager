@@ -681,7 +681,7 @@
     var $modalContent = $('#modalContent');
     var $modalHeader = $modalContent.find('.modal-header');
     $('.close', $modalHeader).unbind('click', modalContentClose);
-    $('body').unbind('keypress', modalEventEscapeCloseHandler);
+    $(document).unbind('keydown', modalEventEscapeCloseHandler);
     $(document).trigger('CToolsDetachBehaviors', $modalContent);
 
     // jQuery magic loop through the instances and run the animations or removal.
