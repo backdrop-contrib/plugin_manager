@@ -454,7 +454,7 @@ function ctools_access_ajax_delete($fragment = NULL, $id = NULL) {
   ctools_include('context');
 
   if (empty($fragment) || !isset($id)) {
-    ajax_render_error();
+    ctools_ajax_render_error();
   }
 
   // Separate the fragment into 'module' and 'argument'.
@@ -468,7 +468,7 @@ function ctools_access_ajax_delete($fragment = NULL, $id = NULL) {
 
   $function = $module . '_ctools_access_get';
   if (!function_exists($function)) {
-    ajax_render_error(t('Missing callback hooks.'));
+    ctools_ajax_render_error(t('Missing callback hooks.'));
   }
 
   list($access, $contexts) = $function($argument);
