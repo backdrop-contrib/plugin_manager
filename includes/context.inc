@@ -76,6 +76,16 @@ class ctools_context {
   public $original_argument;
 
   /**
+   * @var
+   */
+  public $id;
+
+  /**
+   * @var
+   */
+  public $plugin;
+
+  /**
    * @var array
    */
   public $restrictions;
