@@ -77,6 +77,7 @@
  *   ctools_include('object-cache');
  *   ctools_object_cache_set("$module:argument", $access);
  * }
+ * @endcode
  *
  * To utilize this form:
  * @code
@@ -101,6 +102,7 @@
  * @code{
  *   $form = ctools_access_admin_form($form, $form_state);
  * }
+ * @endcode
  *
  * You'll be responsible for adding a submit button.
  *

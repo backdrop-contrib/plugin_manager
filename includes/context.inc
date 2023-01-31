@@ -1686,7 +1686,9 @@ function ctools_context_load_contexts($object, $placeholders = TRUE, $contexts =
  *
  * This function is used to figure out which contexts represents 'the form'
  * from a list of contexts. Only one contexts can actually be 'the form' for
- * a given page, since the @code{<form>} tag can not be embedded within
+ * a given page, since the @code
+ * {<form>}
+ * @endcode tag can not be embedded within
  * itself.
  */
 function ctools_context_get_form($contexts) {
