@@ -1426,8 +1426,8 @@ function ctools_context_get_context_from_relationships($relationships, &$context
       continue;
     }
 
+    $rcontexts = array();
     if (is_array($rdata['context'])) {
-      $rcontexts = array();
       foreach ($rdata['context'] as $cid) {
         if (!empty($contexts[$cid])) {
           $rcontexts[] = $contexts[$cid];
