@@ -1,0 +1,5 @@
+name = Plugin Manager
+description = A tool and API for creating and using plugins in modules.
+backdrop = 1.x
+type = module
+package = Plugins

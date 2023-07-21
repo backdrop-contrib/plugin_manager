@@ -1,0 +1,28 @@
+<?php
+
+/**
+ * @file
+ * Plugin Manager module file.
+ */
+
+require_once backdrop_get_path('module', 'plugin_manager') . '/includes/plugins.inc';
+
+/**
+ * Implements hook_modules_enabled().
+ *
+ * Clear caches for detecting new plugins.
+ */
+function plugin_manager_modules_enabled($modules) {
+  plugin_manager_get_plugins_reset();
+  cache_clear_all('plugin_manager_plugin_files:', 'cache', TRUE);
+}
+
+/**
+ * Implements hook_modules_disabled().
+ *
+ * Clear caches for removing disabled plugins.
+ */
+function plugin_manager_modules_disabled($modules) {
+  plugin_manager_get_plugins_reset();
+  cache_clear_all('plugin_manager_plugin_files:', 'cache', TRUE);
+}

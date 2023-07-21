@@ -1,0 +1,7 @@
+name = Plugins test
+description = Provides hooks for testing plugins.
+package = Plugin helper
+backdrop = 1.x
+type = module
+dependencies[] = plugin_manager:plugin_manager
+hidden = TRUE

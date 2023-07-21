@@ -14,7 +14,7 @@
  * This will ask each module if they support the given API, and if they do
  * it will return an array of information about the modules that do.
  *
- * This function invokes hook_ctools_api. This invocation is statically
+ * This function invokes hook_plugin_manager_api. This invocation is statically
  * cached, so feel free to call it as often per page run as you like, it
  * will cost very little.
  *
@@ -53,12 +53,12 @@
  *   APIs can request any other information to be placed here that they might
  *   need. This should be in the documentation for that particular API.
  */
-function ctools_plugin_api_info($owner, $api, $minimum_version, $current_version) {
-  $cache = &drupal_static(__FUNCTION__, array());
+function plugin_manager_plugin_api_info($owner, $api, $minimum_version, $current_version) {
+  $cache = &backdrop_static(__FUNCTION__, array());
   if (!isset($cache[$owner][$api])) {
     $cache[$owner][$api] = array();
 
-    $hook = ctools_plugin_api_get_hook($owner, $api);
+    $hook = plugin_manager_plugin_api_get_hook($owner, $api);
 
     foreach (module_implements($hook) as $module) {
       $function = $module . '_' . $hook;
@@ -82,14 +82,14 @@ function ctools_plugin_api_info($owner, $api, $minimum_version, $current_version
         || (version_compare($version, $minimum_version, '>=')
         && version_compare($version, $current_version, '<='))) {
         if (!isset($info['path'])) {
-          $info['path'] = drupal_get_path('module', $module);
+          $info['path'] = backdrop_get_path('module', $module);
         }
         $cache[$owner][$api][$module] = $info;
       }
     }
 
     // And allow themes to implement these as well.
-    $themes = _ctools_list_themes();
+    $themes = _plugin_manager_list_themes();
     foreach ($themes as $name => $theme) {
       if (!empty($theme->info['api'][$owner][$api])) {
         $info = $theme->info['api'][$owner][$api];
@@ -104,14 +104,14 @@ function ctools_plugin_api_info($owner, $api, $minimum_version, $current_version
           }
           // Because themes can't easily specify full path, we add it here
           // even though we do not for modules:
-          $info['path'] = drupal_get_path('theme', $name) . '/' . $info['path'];
+          $info['path'] = backdrop_get_path('theme', $name) . '/' . $info['path'];
           $cache[$owner][$api][$name] = $info;
         }
       }
     }
 
     // Allow other modules to hook in.
-    drupal_alter($hook, $cache[$owner][$api], $owner, $api);
+    backdrop_alter($hook, $cache[$owner][$api], $owner, $api);
   }
 
   return $cache[$owner][$api];
@@ -141,10 +141,10 @@ function ctools_plugin_api_info($owner, $api, $minimum_version, $current_version
  * @return
  *   The API information, in case you need it.
  */
-function ctools_plugin_api_include($owner, $api, $minimum_version, $current_version) {
+function plugin_manager_plugin_api_include($owner, $api, $minimum_version, $current_version) {
   static $already_done = array();
 
-  $info = ctools_plugin_api_info($owner, $api, $minimum_version, $current_version);
+  $info = plugin_manager_plugin_api_info($owner, $api, $minimum_version, $current_version);
   foreach ($info as $module => $plugin_info) {
     if (!isset($already_done[$owner][$api][$module])) {
       if (isset($plugin_info["$api file"])) {
@@ -157,11 +157,11 @@ function ctools_plugin_api_include($owner, $api, $minimum_version, $current_vers
         $file = "$module.$api.inc";
       }
 
-      if (file_exists(DRUPAL_ROOT . "/$plugin_info[path]/$file")) {
-        require_once DRUPAL_ROOT . "/$plugin_info[path]/$file";
+      if (file_exists(BACKDROP_ROOT . "/$plugin_info[path]/$file")) {
+        require_once BACKDROP_ROOT . "/$plugin_info[path]/$file";
       }
-      elseif (file_exists(DRUPAL_ROOT . "/$file")) {
-        require_once DRUPAL_ROOT . "/$file";
+      elseif (file_exists(BACKDROP_ROOT . "/$file")) {
+        require_once BACKDROP_ROOT . "/$file";
       }
       $already_done[$owner][$api][$module] = TRUE;
     }
@@ -173,24 +173,24 @@ function ctools_plugin_api_include($owner, $api, $minimum_version, $current_vers
 /**
  * Find out what hook to use to determine if modules support an API.
  *
- * By default, most APIs will use hook_ctools_plugin_api, but some modules
+ * By default, most APIs will use hook_plugin_manager_plugin_api, but some modules
  * want sole ownership. This technique lets modules define what hook
  * to use.
  */
-function ctools_plugin_api_get_hook($owner, $api) {
+function plugin_manager_plugin_api_get_hook($owner, $api) {
   // Allow modules to use their own hook for this. The only easy way to do
   // this right now is with a magically named function.
   if (function_exists($function = $owner . '_' . $api . '_hook_name')) {
     $hook = $function();
   }
-  elseif (function_exists($function = $owner . '_ctools_plugin_api_hook_name')) {
+  elseif (function_exists($function = $owner . '_plugin_manager_plugin_api_hook_name')) {
     $hook = $function();
   }
 
   // Do this last so that if the $function above failed to return, we have a
   // sane default.
   if (empty($hook)) {
-    $hook = 'ctools_plugin_api';
+    $hook = 'plugin_manager_plugin_api';
   }
 
   return $hook;
@@ -201,7 +201,7 @@ function ctools_plugin_api_get_hook($owner, $api) {
  *
  * @param string $module
  *   The name of the module that utilizes this plugin system. It will be used to
- *   get more data about the plugin as defined on hook_ctools_plugin_type().
+ *   get more data about the plugin as defined on hook_plugin_manager_plugin_type().
  * @param string $type
  *   The type identifier of the plugin.
  * @param string $id
@@ -212,23 +212,23 @@ function ctools_plugin_api_get_hook($owner, $api) {
  *   An array of information arrays about the plugins received. The contents of
  *   the array are specific to the plugin.
  */
-function ctools_get_plugins($module, $type, $id = NULL) {
+function plugin_manager_get_plugins($module, $type, $id = NULL) {
   // Store local caches of plugins and plugin info so we don't have to do full
   // lookups every time.
-  static $drupal_static_fast;
-  if (!isset($drupal_static_fast)) {
-    $drupal_static_fast['plugins'] = &drupal_static('ctools_plugins', array());
+  static $backdrop_static_fast;
+  if (!isset($backdrop_static_fast)) {
+    $backdrop_static_fast['plugins'] = &backdrop_static('plugin_manager_plugins', array());
   }
-  $plugins = &$drupal_static_fast['plugins'];
+  $plugins = &$backdrop_static_fast['plugins'];
 
-  $info = ctools_plugin_get_plugin_type_info();
+  $info = plugin_manager_get_plugin_type_info();
 
   if (!isset($info[$module][$type])) {
     // If we don't find the plugin we attempt a cache rebuild before bailing out.
-    $info = ctools_plugin_get_plugin_type_info(TRUE);
+    $info = plugin_manager_get_plugin_type_info(TRUE);
     // Bail out noisily if an invalid module/type combination is requested.
     if (!isset($info[$module][$type])) {
-      watchdog('ctools', 'Invalid plugin module/type combination requested: module @module and type @type', array('@module' => $module, '@type' => $type), WATCHDOG_ERROR);
+      watchdog('plugin_manager', 'Invalid plugin module/type combination requested: module @module and type @type', array('@module' => $module, '@type' => $type), WATCHDOG_ERROR);
       return array();
     }
   }
@@ -246,7 +246,7 @@ function ctools_get_plugins($module, $type, $id = NULL) {
 
   // Store the status of plugin loading. If a module plugin type pair is true,
   // then it is fully loaded and no searching or setup needs to be done.
-  $setup = &drupal_static('ctools_plugin_setup', array());
+  $setup = &backdrop_static('plugin_manager_plugin_setup', array());
 
   // We assume we don't need to build a cache.
   $build_cache = FALSE;
@@ -271,14 +271,14 @@ function ctools_get_plugins($module, $type, $id = NULL) {
   // plugin asks for them. We can assume that if we have plugins we've already
   // called the global hook.
   if (!empty($info[$module][$type]['use hooks']) && empty($plugins[$module][$type])) {
-    $plugins[$module][$type] = ctools_plugin_load_hooks($info[$module][$type]);
+    $plugins[$module][$type] = plugin_manager_load_hooks($info[$module][$type]);
   }
 
   // Then see if we should load all files. We only do this if we want a list of
   // all plugins or there was a cache miss.
   if (empty($setup[$module][$type]) && ($build_cache || !$id)) {
     $setup[$module][$type] = TRUE;
-    $plugins[$module][$type] = array_merge($plugins[$module][$type], ctools_plugin_load_includes($info[$module][$type]));
+    $plugins[$module][$type] = array_merge($plugins[$module][$type], plugin_manager_load_includes($info[$module][$type]));
     // If the plugin can have child plugins, and we're loading all plugins,
     // go through the list of plugins we have and find child plugins.
     if (!$id && !empty($info[$module][$type]['child plugins'])) {
@@ -323,7 +323,7 @@ function ctools_get_plugins($module, $type, $id = NULL) {
     }
 
     if (!array_key_exists($parent, $plugins[$module][$type])) {
-      $result = ctools_plugin_load_includes($info[$module][$type], $parent);
+      $result = plugin_manager_load_includes($info[$module][$type], $parent);
       // Set to either what was returned or NULL.
       $plugins[$module][$type][$parent] = isset($result[$parent]) ? $result[$parent] : NULL;
     }
@@ -344,21 +344,21 @@ function ctools_get_plugins($module, $type, $id = NULL) {
  *
  * This function manages its own cache getting/setting, and should always be
  * used as the way to initially populate the list of plugin types. Make sure you
- * call this function to properly populate the ctools_plugin_type_info static
+ * call this function to properly populate the plugin_manager_plugin_type_info static
  * variable.
  *
  * @return array
  *   A multilevel array of plugin type info, the outer array keyed on module
  *   name and each inner array keyed on plugin type name.
  */
-function ctools_plugin_get_plugin_type_info($flush = FALSE) {
-  static $drupal_static_fast;
-  if (!isset($drupal_static_fast)) {
-    $drupal_static_fast['info_loaded'] = &drupal_static('ctools_plugin_type_info_loaded', FALSE);
-    $drupal_static_fast['all_type_info'] = &drupal_static('ctools_plugin_type_info', array());
+function plugin_manager_get_plugin_type_info($flush = FALSE) {
+  static $backdrop_static_fast;
+  if (!isset($backdrop_static_fast)) {
+    $backdrop_static_fast['info_loaded'] = &backdrop_static('plugin_manager_plugin_type_info_loaded', FALSE);
+    $backdrop_static_fast['all_type_info'] = &backdrop_static('plugin_manager_plugin_type_info', array());
   }
-  $info_loaded = &$drupal_static_fast['info_loaded'];
-  $all_type_info = &$drupal_static_fast['all_type_info'];
+  $info_loaded = &$backdrop_static_fast['info_loaded'];
+  $all_type_info = &$backdrop_static_fast['all_type_info'];
 
   // Only trigger info loading once.
   if ($info_loaded && !$flush) {
@@ -366,16 +366,16 @@ function ctools_plugin_get_plugin_type_info($flush = FALSE) {
   }
   $info_loaded = TRUE;
 
-  $cache = cache_get('ctools_plugin_type_info');
+  $cache = cache_get('plugin_manager_plugin_type_info');
   if (!empty($cache->data) && !$flush) {
     // Plugin type info cache is warm, use it.
     $all_type_info = $cache->data;
   }
   else {
     // Cache expired, refill it.
-    foreach (module_implements('ctools_plugin_type') as $module) {
+    foreach (module_implements('plugin_manager_plugin_type') as $module) {
       $module_infos = array();
-      $function = $module . '_ctools_plugin_type';
+      $function = $module . '_plugin_manager_plugin_type';
       $module_infos = $function();
 
       foreach ($module_infos as $plugin_type_name => $plugin_type_info) {
@@ -398,43 +398,43 @@ function ctools_plugin_get_plugin_type_info($flush = FALSE) {
         $all_type_info[$module][$plugin_type_name] = $plugin_type_info;
       }
     }
-    cache_set('ctools_plugin_type_info', $all_type_info);
+    cache_set('plugin_manager_plugin_type_info', $all_type_info);
   }
 
   return $all_type_info;
 }
 
 /**
- * Reset all static caches that affect the result of ctools_get_plugins().
+ * Reset all static caches that affect the result of plugin_manager_get_plugins().
  */
-function ctools_get_plugins_reset() {
-  drupal_static_reset('ctools_plugins');
-  drupal_static_reset('ctools_plugin_setup');
-  drupal_static_reset('ctools_plugin_load_includes');
-  drupal_static_reset('ctools_plugin_api_info');
+function plugin_manager_get_plugins_reset() {
+  backdrop_static_reset('plugin_manager_plugins');
+  backdrop_static_reset('plugin_manager_plugin_setup');
+  backdrop_static_reset('plugin_manager_load_includes');
+  backdrop_static_reset('plugin_manager_plugin_api_info');
 }
 
 /**
  * Load plugins from a directory.
  *
  * @param array $info
- *   The plugin info as returned by ctools_plugin_get_info()
+ *   The plugin info as returned by plugin_manager_plugin_get_info()
  * @param string $filename
  *   The file to load if we're looking for just one particular plugin.
  *
  * @return array
  *   A (possibly empty) array of information created for this plugin.
  */
-function ctools_plugin_load_includes($info, $filename = NULL) {
+function plugin_manager_load_includes($info, $filename = NULL) {
   // Keep a static array so we don't hit file_scan_directory more than necessary.
-  $all_files = &drupal_static(__FUNCTION__, array());
+  $all_files = &backdrop_static(__FUNCTION__, array());
 
   // Store static of plugin arrays for reference because they can't be
-  // reincluded, so there is no point in using drupal_static().
+  // reincluded, so there is no point in using backdrop_static().
   static $plugin_arrays = array();
 
   if (!isset($all_files[$info['module']][$info['type']])) {
-    $cache = cache_get("ctools_plugin_files:$info[module]:$info[type]");
+    $cache = cache_get("plugin_manager_plugin_files:$info[module]:$info[type]");
     if ($cache) {
       $all_files[$info['module']][$info['type']] = $cache->data;
     }
@@ -444,14 +444,14 @@ function ctools_plugin_load_includes($info, $filename = NULL) {
     elseif (!isset($all_files[$info['module']][$info['type']])) {
       $all_files[$info['module']][$info['type']] = array();
       // Load all our plugins.
-      $directories = ctools_plugin_get_directories($info);
+      $directories = plugin_manager_get_directories($info);
       $extension = (empty($info['info file']) || ($info['extension'] != 'inc')) ? $info['extension'] : 'info';
 
       foreach ($directories as $module => $path) {
         $all_files[$info['module']][$info['type']][$module] = file_scan_directory($path, '/\.' . $extension . '$/', array('key' => 'name'));
       }
 
-      cache_set("ctools_plugin_files:$info[module]:$info[type]", $all_files[$info['module']][$info['type']]);
+      cache_set("plugin_manager_plugin_files:$info[module]:$info[type]", $all_files[$info['module']][$info['type']]);
     }
   }
   $file_list = $all_files[$info['module']][$info['type']];
@@ -466,7 +466,7 @@ function ctools_plugin_load_includes($info, $filename = NULL) {
     foreach ($files as $file) {
       if (!empty($info['info file'])) {
         // Parse a .info file.
-        $result = ctools_plugin_process_info($info, $module, $file);
+        $result = plugin_manager_process_info($info, $module, $file);
       }
       else {
         // Parse a hook.
@@ -477,14 +477,14 @@ function ctools_plugin_load_includes($info, $filename = NULL) {
           $identifier = $plugin_arrays[$file->uri];
         }
         else {
-          include_once DRUPAL_ROOT . '/' . $file->uri;
+          include_once BACKDROP_ROOT . '/' . $file->uri;
           // .inc files have a special format for the hook identifier.
           // For example, 'foo.inc' in the module 'mogul' using the plugin
           // whose hook is named 'borg_type' should have a function named
           // (deep breath) mogul_foo_borg_type().
           // If, however, the .inc file set the quasi-global $plugin array, we
           // can use that and not even call a function. Set the $identifier
-          // appropriately and ctools_plugin_process() will handle it.
+          // appropriately and plugin_manager_plugin_process() will handle it.
           if (isset($plugin)) {
             $plugin_arrays[$file->uri] = $plugin;
             $identifier = $plugin;
@@ -494,7 +494,7 @@ function ctools_plugin_load_includes($info, $filename = NULL) {
           }
         }
 
-        $result = ctools_plugin_process($info, $module, $identifier,
+        $result = plugin_manager_process($info, $module, $identifier,
           dirname($file->uri), basename($file->uri), $file->name);
       }
       if (is_array($result)) {
@@ -508,32 +508,32 @@ function ctools_plugin_load_includes($info, $filename = NULL) {
 /**
  * Get a list of directories to search for plugins of the given type.
  *
- * This utilizes hook_ctools_plugin_directory() to determine a complete list of
+ * This utilizes hook_plugin_manager_plugin_directory() to determine a complete list of
  * directories. Only modules that implement this hook and return a string
  * value will have their directories included.
  *
  * @param $info
- *   The $info array for the plugin as returned by ctools_plugin_get_info().
+ *   The $info array for the plugin as returned by plugin_manager_plugin_get_info().
  *
  * @return array
  *   An array of directories to search.
  */
-function ctools_plugin_get_directories($info) {
+function plugin_manager_get_directories($info) {
   $directories = array();
 
-  foreach (module_implements('ctools_plugin_directory') as $module) {
-    $function = $module . '_ctools_plugin_directory';
+  foreach (module_implements('plugin_manager_plugin_directory') as $module) {
+    $function = $module . '_plugin_manager_plugin_directory';
     $result = $function($info['module'], $info['type']);
     if ($result && is_string($result)) {
-      $directories[$module] = drupal_get_path('module', $module) . '/' . $result;
+      $directories[$module] = backdrop_get_path('module', $module) . '/' . $result;
     }
   }
 
   if (!empty($info['load themes'])) {
-    $themes = _ctools_list_themes();
+    $themes = _plugin_manager_list_themes();
     foreach ($themes as $name => $theme) {
       if (!empty($theme->info['plugins'][$info['module']][$info['type']])) {
-        $directories[$name] = drupal_get_path('theme', $name) . '/' . $theme->info['plugins'][$info['module']][$info['type']];
+        $directories[$name] = backdrop_get_path('theme', $name) . '/' . $theme->info['plugins'][$info['module']][$info['type']];
       }
     }
   }
@@ -541,16 +541,16 @@ function ctools_plugin_get_directories($info) {
 }
 
 /**
- * Helper to build a ctools-friendly list of themes capable of providing plugins.
+ * Helper to build a plugin_manager-friendly list of themes capable of providing plugins.
  *
  * @return array
  *   A list of themes that can act as plugin providers, sorted parent-first with
  *   the active theme placed last.
  */
-function _ctools_list_themes() {
+function _plugin_manager_list_themes() {
   static $themes;
   if (is_null($themes)) {
-    $current = variable_get('theme_default', FALSE);
+    $current = config_get('system.core', 'theme_default');
     $themes = $active = array();
     $all_themes = list_themes();
     foreach ($all_themes as $name => $theme) {
@@ -559,10 +559,6 @@ function _ctools_list_themes() {
         continue;
       }
       $active[$name] = $theme;
-      // Prior to drupal 6.14, $theme->base_themes does not exist. Build it.
-      if (!isset($theme->base_themes) && !empty($theme->base_theme)) {
-        $active[$name]->base_themes = ctools_find_base_themes($all_themes, $name);
-      }
     }
 
     // Construct a parent-first list of all themes.
@@ -586,65 +582,19 @@ function _ctools_list_themes() {
 }
 
 /**
- * Find all the base themes for the specified theme.
- *
- * Themes can inherit templates and function implementations from earlier themes.
- *
- * NOTE: this is a verbatim copy of system_find_base_themes(), which was not
- * implemented until 6.14. It is included here only as a fallback for outdated
- * versions of drupal core.
- *
- * @param $themes
- *   An array of available themes.
- * @param $key
- *   The name of the theme whose base we are looking for.
- * @param $used_keys
- *   A recursion parameter preventing endless loops.
- *
- * @return array
- *   Returns an array of all of the theme's ancestors; the first element's value
- *   will be NULL if an error occurred. (Note: this is NOT $arr[0]).
- */
-function ctools_find_base_themes($themes, $key, $used_keys = array()) {
-  $base_key = $themes[$key]->info['base theme'];
-  // Does the base theme exist?
-  if (!isset($themes[$base_key])) {
-    return array($base_key => NULL);
-  }
-
-  $current_base_theme = array($base_key => $themes[$base_key]->info['name']);
-
-  // Is the base theme itself a child of another theme?
-  if (isset($themes[$base_key]->info['base theme'])) {
-    // Do we already know the base themes of this theme?
-    if (isset($themes[$base_key]->base_themes)) {
-      return $themes[$base_key]->base_themes + $current_base_theme;
-    }
-    // Prevent loops.
-    if (!empty($used_keys[$base_key])) {
-      return array($base_key => NULL);
-    }
-    $used_keys[$base_key] = TRUE;
-    return ctools_find_base_themes($themes, $base_key, $used_keys) + $current_base_theme;
-  }
-  // If we get here, then this is our parent theme.
-  return $current_base_theme;
-}
-
-/**
  * Load plugin info for the provided hook; this is handled separately from
  * plugins from files.
  *
  * @param $info
- *   The info array about the plugin as created by ctools_plugin_get_info()
+ *   The info array about the plugin as created by plugin_manager_plugin_get_info()
  *
  * @return
  *   An array of info supplied by any hook implementations.
  */
-function ctools_plugin_load_hooks($info) {
+function plugin_manager_load_hooks($info) {
   $hooks = array();
   foreach (module_implements($info['hook']) as $module) {
-    $result = ctools_plugin_process($info, $module, $module, drupal_get_path('module', $module));
+    $result = plugin_manager_process($info, $module, $module, backdrop_get_path('module', $module));
     if (is_array($result)) {
       $hooks = array_merge($hooks, $result);
     }
@@ -653,10 +603,10 @@ function ctools_plugin_load_hooks($info) {
 }
 
 /**
- * Process a single hook implementation of a ctools plugin.
+ * Process a single hook implementation of a plugin_manager plugin.
  *
  * @param array $info
- *   The $info array about the plugin as returned by ctools_plugin_get_info()
+ *   The $info array about the plugin as returned by plugin_manager_plugin_get_info()
  * @param string $module
  *   The module that implements the plugin being processed.
  * @param string|array $identifier
@@ -678,7 +628,7 @@ function ctools_plugin_load_hooks($info) {
  * @return null|array
  *   NULL on failure, otherwise an array containing the results keyed by name.
  */
-function ctools_plugin_process($info, $module, $identifier, $path, $file = NULL, $base = NULL) {
+function plugin_manager_process($info, $module, $identifier, $path, $file = NULL, $base = NULL) {
   if (is_array($identifier)) {
     $result = $identifier;
   }
@@ -700,14 +650,14 @@ function ctools_plugin_process($info, $module, $identifier, $path, $file = NULL,
     $result = array($base => $result);
   }
 
-  return _ctools_process_data($result, $info, $module, $path, $file);
+  return _plugin_manager_process_data($result, $info, $module, $path, $file);
 }
 
 /**
  * Fill in default values and run hooks for data loaded for one or
  * more plugins.
  */
-function _ctools_process_data($result, $plugin_type_info, $module, $path, $file) {
+function _plugin_manager_process_data($result, $plugin_type_info, $module, $path, $file) {
   // Fill in global defaults.
   foreach ($result as $name => $plugin) {
     $result[$name] += array(
@@ -728,17 +678,17 @@ function _ctools_process_data($result, $plugin_type_info, $module, $path, $file)
 
     // Allow the plugin to be altered before processing.
     if (!empty($plugin_type_info['alterable']) && $plugin_type_info['alterable']) {
-      drupal_alter('ctools_plugin_pre', $result[$name], $plugin_type_info);
+      backdrop_alter('plugin_manager_plugin_pre', $result[$name], $plugin_type_info);
     }
 
     // Allow the plugin owner to do additional processing.
-    if (!empty($plugin_type_info['process']) && $function = ctools_plugin_get_function($plugin_type_info, 'process')) {
+    if (!empty($plugin_type_info['process']) && $function = plugin_manager_get_function($plugin_type_info, 'process')) {
       $function($result[$name], $plugin_type_info);
     }
 
     // Allow the plugin to be altered after processing.
     if (!empty($plugin_type_info['alterable']) && $plugin_type_info['alterable']) {
-      drupal_alter('ctools_plugin_post', $result[$name], $plugin_type_info);
+      backdrop_alter('plugin_manager_plugin_post', $result[$name], $plugin_type_info);
     }
   }
   return $result;
@@ -748,7 +698,7 @@ function _ctools_process_data($result, $plugin_type_info, $module, $path, $file)
  * Process an info file for plugin information, rather than a hook.
  *
  * @param array $info
- *   The $info array about the plugin as returned by ctools_plugin_get_info()
+ *   The $info array about the plugin as returned by plugin_manager_plugin_get_info()
  * @param string $module
  *   The module that implements the plugin being processed.
  * @param object $file
@@ -758,25 +708,25 @@ function _ctools_process_data($result, $plugin_type_info, $module, $path, $file)
  * @return null|array
  *   NULL on failure, otherwise an array containing the results keyed by name.
  */
-function ctools_plugin_process_info($info, $module, $file) {
-  $result = drupal_parse_info_file($file->uri);
+function plugin_manager_process_info($info, $module, $file) {
+  $result = backdrop_parse_info_file($file->uri);
   if ($result) {
     $result = array($file->name => $result);
-    return _ctools_process_data($result, $info, $module, dirname($file->uri), basename($file->uri));
+    return _plugin_manager_process_data($result, $info, $module, dirname($file->uri), basename($file->uri));
   }
 }
 
 /**
  * Ask a module for info about a particular plugin type.
  */
-function ctools_plugin_get_info($module, $type) {
-  $all_info = ctools_plugin_get_plugin_type_info();
+function plugin_manager_get_info($module, $type) {
+  $all_info = plugin_manager_get_plugin_type_info();
   return isset($all_info[$module][$type]) ? $all_info[$module][$type] : array();
 }
 
 /**
  * Get a function from a plugin, if it exists. If the plugin is not already
- * loaded, try ctools_plugin_load_function() instead.
+ * loaded, try plugin_manager_plugin_load_function() instead.
  *
  * @param $plugin_definition
  *   The loaded plugin type.
@@ -787,15 +737,15 @@ function ctools_plugin_get_info($module, $type) {
  *   The actual name of the function to call, or NULL if the function
  *   does not exist.
  */
-function ctools_plugin_get_function($plugin_definition, $function_name) {
+function plugin_manager_get_function($plugin_definition, $function_name) {
   // If cached the .inc file may not have been loaded. require_once is quite safe
   // and fast so it's okay to keep calling it.
   if (isset($plugin_definition['file'])) {
     // Plugins that are loaded from info files have the info file as
     // $plugin['file'].  Don't try to run those.
-    $info = ctools_plugin_get_info($plugin_definition['plugin module'], $plugin_definition['plugin type']);
+    $info = plugin_manager_get_info($plugin_definition['plugin module'], $plugin_definition['plugin type']);
     if (empty($info['info file'])) {
-      require_once DRUPAL_ROOT . '/' . $plugin_definition['path'] . '/' . $plugin_definition['file'];
+      require_once BACKDROP_ROOT . '/' . $plugin_definition['path'] . '/' . $plugin_definition['file'];
     }
   }
 
@@ -810,7 +760,7 @@ function ctools_plugin_get_function($plugin_definition, $function_name) {
       if (isset($plugin_definition[$function_name]['path'])) {
         $file = $plugin_definition[$function_name]['path'] . '/' . $file;
       }
-      require_once DRUPAL_ROOT . '/' . $file;
+      require_once BACKDROP_ROOT . '/' . $file;
     }
   }
   else {
@@ -839,14 +789,14 @@ function ctools_plugin_get_function($plugin_definition, $function_name) {
  *   The actual name of the function to call, or NULL if the function
  *   does not exist.
  */
-function ctools_plugin_load_function($module, $type, $id, $function_name) {
-  $plugin = ctools_get_plugins($module, $type, $id);
-  return ctools_plugin_get_function($plugin, $function_name);
+function plugin_manager_load_function($module, $type, $id, $function_name) {
+  $plugin = plugin_manager_get_plugins($module, $type, $id);
+  return plugin_manager_get_function($plugin, $function_name);
 }
 
 /**
  * Get a class from a plugin, if it exists. If the plugin is not already
- * loaded, try ctools_plugin_load_class() instead.
+ * loaded, try plugin_manager_plugin_load_class() instead.
  *
  * @param $plugin_definition
  *   The loaded plugin type.
@@ -856,15 +806,15 @@ function ctools_plugin_load_function($module, $type, $id, $function_name) {
  * @return string
  *   The actual name of the class to call, or NULL if the class does not exist.
  */
-function ctools_plugin_get_class($plugin_definition, $class_name) {
+function plugin_manager_get_class($plugin_definition, $class_name) {
   // If cached the .inc file may not have been loaded. require_once is quite safe
   // and fast so it's okay to keep calling it.
   if (isset($plugin_definition['file'])) {
     // Plugins that are loaded from info files have the info file as
     // $plugin['file'].  Don't try to run those.
-    $info = ctools_plugin_get_info($plugin_definition['plugin module'], $plugin_definition['plugin type']);
+    $info = plugin_manager_get_info($plugin_definition['plugin module'], $plugin_definition['plugin type']);
     if (empty($info['info file'])) {
-      require_once DRUPAL_ROOT . '/' . $plugin_definition['path'] . '/' . $plugin_definition['file'];
+      require_once BACKDROP_ROOT . '/' . $plugin_definition['path'] . '/' . $plugin_definition['file'];
     }
   }
 
@@ -901,9 +851,9 @@ function ctools_plugin_get_class($plugin_definition, $class_name) {
  * @return string
  *   The actual name of the class to call, or NULL if the class does not exist.
  */
-function ctools_plugin_load_class($module, $type, $id, $class_name) {
-  $plugin = ctools_get_plugins($module, $type, $id);
-  return ctools_plugin_get_class($plugin, $class_name);
+function plugin_manager_plugin_load_class($module, $type, $id, $class_name) {
+  $plugin = plugin_manager_get_plugins($module, $type, $id);
+  return plugin_manager_get_class($plugin, $class_name);
 }
 
 /**
@@ -911,7 +861,7 @@ function ctools_plugin_load_class($module, $type, $id, $class_name) {
  *
  * Sort first by weight, then by title.
  */
-function ctools_plugin_sort($a, $b) {
+function plugin_manager_sort($a, $b) {
   if (is_object($a)) {
     $a = (array) $a;
   }
