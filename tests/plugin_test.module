@@ -6,10 +6,10 @@
  */
 
 /**
- * Implementation of hook_plugin_manager_plugin_directory().
+ * Implementation of hook_plugin_manager_directory().
  */
-function plugin_manager_plugin_test_plugin_manager_plugin_directory($module, $plugin) {
-  if ($module == 'plugin_manager_plugin_test') {
+function plugin_test_plugin_manager_directory($module, $plugin) {
+  if ($module == 'plugin_test') {
     return 'plugins/' . $plugin;
   }
 }
@@ -17,16 +17,19 @@ function plugin_manager_plugin_test_plugin_manager_plugin_directory($module, $pl
 /**
  * Implements hook_autoload_info().
  */
-function plugin_manager_plugin_test_autoload_info() {
+function plugin_test_autoload_info() {
   return array(
-
+    'pluginNotCachedPluginArray' => 'plugins/not_cached/pluginNotCachedPluginArray.php',
+    'pluginNotCachedPluginArray2' => 'plugins/not_cached/pluginNotCachedPluginArray2.php',
+    'pluginCachedPluginArray' => 'plugins/cached/pluginCachedPluginArray.php',
+    'pluginCachedPluginArray2' => 'plugins/cached/pluginCachedPluginArray2.php',
   );
 }
 
 /**
  * Implements hook_plugin_manager_plugin_type().
  */
-function plugin_manager_plugin_test_plugin_manager_plugin_type() {
+function plugin_test_plugin_manager_plugin_type() {
   return array(
     'extra_defaults' => array(
       'defaults' => array(
@@ -67,12 +70,12 @@ function plugin_manager_plugin_test_plugin_manager_plugin_type() {
 /**
  * Plugin callback.
  *
- * @see plugin_manager_plugin_test_plugin_manager_plugin_type()
+ * @see plugin_test_plugin_manager_plugin_type()
  */
-function plugin_manager_plugin_test_plugin_manager_plugin_test_big_hook_cached() {
+function plugin_test_plugin_test_big_hook_cached() {
   return array(
     'test1' => array(
-      'function' => 'plugin_manager_plugin_test_hook_cached_test',
+      'function' => 'plugin_test_hook_cached_test',
       'handler' => 'class1',
     ),
   );
@@ -81,12 +84,12 @@ function plugin_manager_plugin_test_plugin_manager_plugin_test_big_hook_cached()
 /**
  * Plugin callback.
  *
- * @see plugin_manager_plugin_test_plugin_manager_plugin_type()
+ * @see plugin_test_plugin_manager_plugin_type()
  */
-function plugin_manager_plugin_test_plugin_manager_plugin_test_big_hook_not_cached() {
+function plugin_test_plugin_test_big_hook_not_cached() {
   return array(
     'test1' => array(
-      'function' => 'plugin_manager_plugin_test_hook_not_cached_test',
+      'function' => 'plugin_test_hook_not_cached_test',
       'class' => 'class1',
     ),
   );
@@ -95,15 +98,15 @@ function plugin_manager_plugin_test_plugin_manager_plugin_test_big_hook_not_cach
 /**
  * Callback for the big_hook_cached plugin.
  *
- * @see plugin_manager_plugin_test_plugin_manager_plugin_test_big_hook_cached
+ * @see plugin_test_big_hook_cached
  */
-function plugin_manager_plugin_test_hook_cached_test() {
+function plugin_test_hook_cached_test() {
 }
 
 /**
  * Callback for the big_hook_not_cached plugin.
  *
- * @see plugin_manager_plugin_test_plugin_manager_plugin_test_big_hook_not_cached()
+ * @see plugin_test_big_hook_not_cached()
  */
-function plugin_manager_plugin_test_hook_not_cached_test() {
+function plugin_test_hook_not_cached_test() {
 }

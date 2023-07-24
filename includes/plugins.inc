@@ -53,12 +53,12 @@
  *   APIs can request any other information to be placed here that they might
  *   need. This should be in the documentation for that particular API.
  */
-function plugin_manager_plugin_api_info($owner, $api, $minimum_version, $current_version) {
+function plugin_manager_api_info($owner, $api, $minimum_version, $current_version) {
   $cache = &backdrop_static(__FUNCTION__, array());
   if (!isset($cache[$owner][$api])) {
     $cache[$owner][$api] = array();
 
-    $hook = plugin_manager_plugin_api_get_hook($owner, $api);
+    $hook = plugin_manager_api_get_hook($owner, $api);
 
     foreach (module_implements($hook) as $module) {
       $function = $module . '_' . $hook;
@@ -141,10 +141,10 @@ function plugin_manager_plugin_api_info($owner, $api, $minimum_version, $current
  * @return
  *   The API information, in case you need it.
  */
-function plugin_manager_plugin_api_include($owner, $api, $minimum_version, $current_version) {
+function plugin_manager_api_include($owner, $api, $minimum_version, $current_version) {
   static $already_done = array();
 
-  $info = plugin_manager_plugin_api_info($owner, $api, $minimum_version, $current_version);
+  $info = plugin_manager_api_info($owner, $api, $minimum_version, $current_version);
   foreach ($info as $module => $plugin_info) {
     if (!isset($already_done[$owner][$api][$module])) {
       if (isset($plugin_info["$api file"])) {
@@ -173,24 +173,24 @@ function plugin_manager_plugin_api_include($owner, $api, $minimum_version, $curr
 /**
  * Find out what hook to use to determine if modules support an API.
  *
- * By default, most APIs will use hook_plugin_manager_plugin_api, but some modules
+ * By default, most APIs will use hook_plugin_manager_api, but some modules
  * want sole ownership. This technique lets modules define what hook
  * to use.
  */
-function plugin_manager_plugin_api_get_hook($owner, $api) {
+function plugin_manager_api_get_hook($owner, $api) {
   // Allow modules to use their own hook for this. The only easy way to do
   // this right now is with a magically named function.
   if (function_exists($function = $owner . '_' . $api . '_hook_name')) {
     $hook = $function();
   }
-  elseif (function_exists($function = $owner . '_plugin_manager_plugin_api_hook_name')) {
+  elseif (function_exists($function = $owner . '_plugin_manager_api_hook_name')) {
     $hook = $function();
   }
 
   // Do this last so that if the $function above failed to return, we have a
   // sane default.
   if (empty($hook)) {
-    $hook = 'plugin_manager_plugin_api';
+    $hook = 'plugin_manager_api';
   }
 
   return $hook;
@@ -246,7 +246,7 @@ function plugin_manager_get_plugins($module, $type, $id = NULL) {
 
   // Store the status of plugin loading. If a module plugin type pair is true,
   // then it is fully loaded and no searching or setup needs to be done.
-  $setup = &backdrop_static('plugin_manager_plugin_setup', array());
+  $setup = &backdrop_static('plugin_manager_setup', array());
 
   // We assume we don't need to build a cache.
   $build_cache = FALSE;
@@ -409,16 +409,16 @@ function plugin_manager_get_plugin_type_info($flush = FALSE) {
  */
 function plugin_manager_get_plugins_reset() {
   backdrop_static_reset('plugin_manager_plugins');
-  backdrop_static_reset('plugin_manager_plugin_setup');
+  backdrop_static_reset('plugin_manager_setup');
   backdrop_static_reset('plugin_manager_load_includes');
-  backdrop_static_reset('plugin_manager_plugin_api_info');
+  backdrop_static_reset('plugin_manager_api_info');
 }
 
 /**
  * Load plugins from a directory.
  *
  * @param array $info
- *   The plugin info as returned by plugin_manager_plugin_get_info()
+ *   The plugin info as returned by plugin_manager_get_info()
  * @param string $filename
  *   The file to load if we're looking for just one particular plugin.
  *
@@ -434,7 +434,7 @@ function plugin_manager_load_includes($info, $filename = NULL) {
   static $plugin_arrays = array();
 
   if (!isset($all_files[$info['module']][$info['type']])) {
-    $cache = cache_get("plugin_manager_plugin_files:$info[module]:$info[type]");
+    $cache = cache_get("plugin_manager_files:$info[module]:$info[type]");
     if ($cache) {
       $all_files[$info['module']][$info['type']] = $cache->data;
     }
@@ -451,7 +451,7 @@ function plugin_manager_load_includes($info, $filename = NULL) {
         $all_files[$info['module']][$info['type']][$module] = file_scan_directory($path, '/\.' . $extension . '$/', array('key' => 'name'));
       }
 
-      cache_set("plugin_manager_plugin_files:$info[module]:$info[type]", $all_files[$info['module']][$info['type']]);
+      cache_set("plugin_manager_files:$info[module]:$info[type]", $all_files[$info['module']][$info['type']]);
     }
   }
   $file_list = $all_files[$info['module']][$info['type']];
@@ -484,7 +484,7 @@ function plugin_manager_load_includes($info, $filename = NULL) {
           // (deep breath) mogul_foo_borg_type().
           // If, however, the .inc file set the quasi-global $plugin array, we
           // can use that and not even call a function. Set the $identifier
-          // appropriately and plugin_manager_plugin_process() will handle it.
+          // appropriately and plugin_manager_process() will handle it.
           if (isset($plugin)) {
             $plugin_arrays[$file->uri] = $plugin;
             $identifier = $plugin;
@@ -508,12 +508,12 @@ function plugin_manager_load_includes($info, $filename = NULL) {
 /**
  * Get a list of directories to search for plugins of the given type.
  *
- * This utilizes hook_plugin_manager_plugin_directory() to determine a complete list of
+ * This utilizes hook_plugin_manager_directory() to determine a complete list of
  * directories. Only modules that implement this hook and return a string
  * value will have their directories included.
  *
  * @param $info
- *   The $info array for the plugin as returned by plugin_manager_plugin_get_info().
+ *   The $info array for the plugin as returned by plugin_manager_get_info().
  *
  * @return array
  *   An array of directories to search.
@@ -521,8 +521,8 @@ function plugin_manager_load_includes($info, $filename = NULL) {
 function plugin_manager_get_directories($info) {
   $directories = array();
 
-  foreach (module_implements('plugin_manager_plugin_directory') as $module) {
-    $function = $module . '_plugin_manager_plugin_directory';
+  foreach (module_implements('plugin_manager_directory') as $module) {
+    $function = $module . '_plugin_manager_directory';
     $result = $function($info['module'], $info['type']);
     if ($result && is_string($result)) {
       $directories[$module] = backdrop_get_path('module', $module) . '/' . $result;
@@ -586,7 +586,7 @@ function _plugin_manager_list_themes() {
  * plugins from files.
  *
  * @param $info
- *   The info array about the plugin as created by plugin_manager_plugin_get_info()
+ *   The info array about the plugin as created by plugin_manager_get_info()
  *
  * @return
  *   An array of info supplied by any hook implementations.
@@ -606,7 +606,7 @@ function plugin_manager_load_hooks($info) {
  * Process a single hook implementation of a plugin_manager plugin.
  *
  * @param array $info
- *   The $info array about the plugin as returned by plugin_manager_plugin_get_info()
+ *   The $info array about the plugin as returned by plugin_manager_get_info()
  * @param string $module
  *   The module that implements the plugin being processed.
  * @param string|array $identifier
@@ -678,7 +678,7 @@ function _plugin_manager_process_data($result, $plugin_type_info, $module, $path
 
     // Allow the plugin to be altered before processing.
     if (!empty($plugin_type_info['alterable']) && $plugin_type_info['alterable']) {
-      backdrop_alter('plugin_manager_plugin_pre', $result[$name], $plugin_type_info);
+      backdrop_alter('plugin_manager_pre', $result[$name], $plugin_type_info);
     }
 
     // Allow the plugin owner to do additional processing.
@@ -688,7 +688,7 @@ function _plugin_manager_process_data($result, $plugin_type_info, $module, $path
 
     // Allow the plugin to be altered after processing.
     if (!empty($plugin_type_info['alterable']) && $plugin_type_info['alterable']) {
-      backdrop_alter('plugin_manager_plugin_post', $result[$name], $plugin_type_info);
+      backdrop_alter('plugin_manager_post', $result[$name], $plugin_type_info);
     }
   }
   return $result;
@@ -698,7 +698,7 @@ function _plugin_manager_process_data($result, $plugin_type_info, $module, $path
  * Process an info file for plugin information, rather than a hook.
  *
  * @param array $info
- *   The $info array about the plugin as returned by plugin_manager_plugin_get_info()
+ *   The $info array about the plugin as returned by plugin_manager_get_info()
  * @param string $module
  *   The module that implements the plugin being processed.
  * @param object $file
@@ -726,7 +726,7 @@ function plugin_manager_get_info($module, $type) {
 
 /**
  * Get a function from a plugin, if it exists. If the plugin is not already
- * loaded, try plugin_manager_plugin_load_function() instead.
+ * loaded, try plugin_manager_load_function() instead.
  *
  * @param $plugin_definition
  *   The loaded plugin type.
@@ -796,7 +796,7 @@ function plugin_manager_load_function($module, $type, $id, $function_name) {
 
 /**
  * Get a class from a plugin, if it exists. If the plugin is not already
- * loaded, try plugin_manager_plugin_load_class() instead.
+ * loaded, try plugin_manager_load_class() instead.
  *
  * @param $plugin_definition
  *   The loaded plugin type.
@@ -851,7 +851,7 @@ function plugin_manager_get_class($plugin_definition, $class_name) {
  * @return string
  *   The actual name of the class to call, or NULL if the class does not exist.
  */
-function plugin_manager_plugin_load_class($module, $type, $id, $class_name) {
+function plugin_manager_load_class($module, $type, $id, $class_name) {
   $plugin = plugin_manager_get_plugins($module, $type, $id);
   return plugin_manager_get_class($plugin, $class_name);
 }

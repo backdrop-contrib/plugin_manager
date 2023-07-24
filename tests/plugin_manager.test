@@ -3,14 +3,14 @@
 /**
  * Test menu links depending on user permissions.
  */
-class PluginHelperPluginsGetInfoTestCase extends BackdropWebTestCase {
+class PluginManagerPluginsGetInfoTestCase extends BackdropWebTestCase {
 
   /**
    * {@inheritdoc}
    */
   public function setUp(array $modules = array()) {
     $modules[] = 'plugin_manager';
-    $modules[] = 'plugin_manager_plugin_test';
+    $modules[] = 'plugin_test';
     parent::setUp($modules);
   }
 
@@ -27,7 +27,7 @@ class PluginHelperPluginsGetInfoTestCase extends BackdropWebTestCase {
    *   The identifier of the function. For example, 'settings form'.
    */
   protected function assertPluginFunction($module, $type, $id, $function = 'function') {
-    $func = plugin_manager_plugin_load_function($module, $type, $id, $function);
+    $func = plugin_manager_load_function($module, $type, $id, $function);
     $this->assertTrue(function_exists($func), t('Plugin @plugin of plugin type @module:@type successfully retrieved @retrieved for @function.', array(
       '@plugin' => $id,
       '@module' => $module,
@@ -50,7 +50,7 @@ class PluginHelperPluginsGetInfoTestCase extends BackdropWebTestCase {
    *   The identifier of the function. For example, 'settings form'.
    */
   protected function assertPluginMissingFunction($module, $type, $id, $function = 'function') {
-    $func = plugin_manager_plugin_load_function($module, $type, $id, $function);
+    $func = plugin_manager_load_function($module, $type, $id, $function);
     $this->assertEqual($func, NULL, t('Plugin @plugin of plugin type @module:@type for @function with missing function successfully failed.', array(
       '@plugin' => $id,
       '@module' => $module,
@@ -72,7 +72,7 @@ class PluginHelperPluginsGetInfoTestCase extends BackdropWebTestCase {
    *   The name of the PHP class to load.
    */
   protected function assertPluginClass($module, $type, $id, $class = 'handler') {
-    $class_name = plugin_manager_plugin_load_class($module, $type, $id, $class);
+    $class_name = plugin_manager_load_class($module, $type, $id, $class);
     $this->assertTrue(class_exists($class_name), t('Plugin @plugin of plugin type @module:@type successfully retrieved @retrieved for @class.', array(
       '@plugin' => $id,
       '@module' => $module,
@@ -95,7 +95,7 @@ class PluginHelperPluginsGetInfoTestCase extends BackdropWebTestCase {
    *   The name of the PHP class to load.
    */
   protected function assertPluginMissingClass($module, $type, $id, $class = 'handler') {
-    $class_name = plugin_manager_plugin_load_class($module, $type, $id, $class);
+    $class_name = plugin_manager_load_class($module, $type, $id, $class);
     $this->assertEqual($class_name, NULL, t('Plugin @plugin of plugin type @module:@type for @class with missing class successfully failed.', array(
       '@plugin' => $id,
       '@module' => $module,
@@ -108,8 +108,7 @@ class PluginHelperPluginsGetInfoTestCase extends BackdropWebTestCase {
    * Test that plugins are loaded correctly.
    */
   public function testPluginLoading() {
-    plugin_manager_include('plugins');
-    $module = 'plugin_manager_plugin_test';
+    $module = 'plugin_test';
     $type = 'not_cached';
 
     // Test function retrieval for plugins using different definition methods.

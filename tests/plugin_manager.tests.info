@@ -1,5 +1,5 @@
 [PluginManagerPluginsGetInfoTestCase]
 name = Get plugin info
 description = Verify that plugin type definitions can properly set and overide values.
-group = plugin_manager
+group = Plugin Manager
 file = plugin_manager.test

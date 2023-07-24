@@ -5,4 +5,4 @@
  * A cached plugin object that tests inheritance including.
  */
 
-class ctoolsCachedPluginArray2 extends pluginCachedPluginArray {}
+class pluginCachedPluginArray2 extends pluginCachedPluginArray {}

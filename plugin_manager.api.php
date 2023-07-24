@@ -39,9 +39,9 @@ function hook_plugin_manager_plugin_type() {
  * is searching.
  *
  * The $plugin_type parameter is self-explanatory - it is the string name of the
- * plugin type (e.g., Panels' 'layouts' or 'styles'). The $owner parameter is
+ * plugin type (e.g., 'brewer_types' 'grinder_types'). The $owner parameter is
  * necessary because Plugin API internally namespaces plugins by the module that
- * owns them. This is an extension of Drupal best practices on avoiding global
+ * owns them. This is an extension of Backdrop best practices on avoiding global
  * namespace pollution by prepending your module name to all its functions.
  * Consequently, it is possible for two different modules to create a plugin
  * type with exactly the same name and have them operate in harmony. In fact,
@@ -72,21 +72,22 @@ function hook_plugin_manager_plugin_type() {
  *   The path where Plugin API' plugin system should search for plugin files,
  *   relative to your module's root. Omit leading and trailing slashes.
  */
-function hook_plugin_manager_plugin_directory($owner, $plugin_type) {
-  // Form 1 - for a module implementing only the 'content_types' plugin owned
+function hook_plugin_manager_directory($owner, $plugin_type) {
+  // Form 1 - for a module implementing only the 'brewer_types' plugin owned
   // by Plugin API, this would cause the plugin system to search the
-  // <moduleroot>/plugins/content_types directory for .inc plugin files.
-  if ($owner == 'plugin' && $plugin_type == 'content_types') {
-    return 'plugins/content_types';
+  // <moduleroot>/plugins/brewer_types directory for .inc plugin files.
+  if ($owner == 'plugin' && $plugin_type == 'brewer_types') {
+    return 'plugins/brewer_types';
   }
 
-  // Form 2 - if your module implements only Panels plugins, and has 'layouts'
-  // and 'styles' plugins but no 'cache' or 'display_renderers', it is OK to be
-  // lazy and return a directory for a plugin you don't actually implement (so
-  // long as that directory doesn't exist). This lets you avoid ugly in_array()
-  // logic in your conditional, and also makes it easy to add plugins of those
-  // types later without having to change this hook implementation.
-  if ($owner == 'panels') {
+  // Form 2 - if your module implements only Coffee Maker plugins, and has
+  // 'brewer_types' and 'grinder_types' plugins but no 'cache' or
+  // 'display_renderers', it is OK to be lazy and return a directory for a
+  // plugin you don't actually implement (so long as that directory doesn't
+  // exist). This lets you avoid ugly in_array() logic in your conditional, and
+  // also makes it easy to add plugins of those types later without having to
+  // change this hook implementation.
+  if ($owner == 'coffeemaker') {
     return "plugins/$plugin_type";
   }
 
@@ -111,7 +112,7 @@ function hook_plugin_manager_plugin_directory($owner, $plugin_type) {
  * @param array $info
  *   An associative array of plugin type info.
  */
-function hook_plugin_manager_plugin_pre_alter(array &$plugin, array &$info) {
+function hook_plugin_manager_pre_alter(array &$plugin, array &$info) {
   // Override a function defined by the plugin.
   if ($info['type'] == 'my_type') {
     $plugin['my_flag'] = 'new_value';
@@ -129,7 +130,7 @@ function hook_plugin_manager_plugin_pre_alter(array &$plugin, array &$info) {
  * @param array $info
  *   An associative array of plugin type info.
  */
-function hook_plugin_manager_plugin_post_alter(array &$plugin, array &$info) {
+function hook_plugin_manager_post_alter(array &$plugin, array &$info) {
   // Override a function defined by the plugin.
   if ($info['type'] == 'my_type') {
     $plugin['my_function'] = 'new_function';
