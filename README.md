@@ -1,6 +1,6 @@
-# Plugin API
+# Plugin Manager
 
-Provides API to make it easy for modules implement plugins.
+Provides API to make it easy for modules to implement plugins.
 
 The plugins tool allows a module to allow *other* modules (and themes!) to
 provide plugins which provide some kind of functionality or some kind of task.
